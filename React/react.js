@@ -6,6 +6,11 @@ export class ToyReactComponent {
     this.props = Object.create(null)
     this.state = null
     this.oldState = null
+    this.vDom = null
+  }
+
+  get type () {
+    return this.constructor.name
   }
 
   setState (state) {
@@ -69,18 +74,48 @@ export class ToyReactComponent {
       this.componentWillUpdate && (console.warn('[unsafe] componentWillUpdate'), this.componentWillUpdate())
     }
 
-    this.range.deleteContents()
-    // 由于range清理，会导致后续节点向前移动，导致range offset 发生改变
-    // 删除后追加注释节点，使得offset可以保持不变
-    const placeholder = document.createComment('')
-    const range = document.createRange()
-    range.setStart(this.range.endContainer, this.range.endOffset)
-    range.setEnd(this.range.endContainer, this.range.endOffset)
-    range.insertNode(placeholder)
     const vDom = this.render()
-    vDom.mountTo(this.range)
-    // placeholder 不可以移除
-    // placeholder.parentNode.removeChild(placeholder)
+    if (this.vDom) {
+      const isSameNode = (node1, node2) => {
+        if (node1.type !== node2.type) return false
+        for (const name in node1.props) {
+          if (node1.props[name] !== node2.props[name]) return false
+        }
+        if (Object.keys(node1.props).length !== Object.keys(node2.props).length) return false
+        return true
+      }
+
+      const isSameTree = (node1, node2) => {
+        if (isSameNode(node1, node2)) return false
+        if (node1.children.length !== node2.children.length) return false
+        for (let i = 0; i < node1.children.length; i++) {
+          if (!isSameTree(node1.children[i], node2.children[i])) {
+            return false
+          }
+        }
+        return true
+      }
+
+      const replace = (newTree, oldTree) => {
+        if (isSameTree(newTree, oldTree)) return
+        if (!isSameNode(newTree, oldTree)) {
+          // 根节点不同，直接放弃
+          vDom.mountTo(oldTree.range)
+        } else {
+          // 根节点相同，处理子节点
+          for (let i = 0; i < newTree.children.length; i++) {
+            replace(newTree.children[i], oldTree.children[i])
+          }
+        }
+      }
+
+      replace(vDom, this.vDom)
+
+    } else {
+      vDom.mountTo(this.range)
+    }
+
+    this.vDom = vDom
 
     // 生命周期-componentDidUpdate
     if (type !== 'mount') {
