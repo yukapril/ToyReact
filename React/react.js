@@ -11,8 +11,14 @@ export class ToyReactComponent {
   setState (state) {
     // const merge = (oldState, newState) => {
     //   for (const s in newState) {
-    //     if (typeof newState[s] === 'object') {
-    //       if (typeof oldState[s] !== 'object') oldState[s] = {}
+    //     if (typeof newState[s] === 'object' && newState[s] !== null) {
+    //       if (typeof oldState[s] !== 'object') {
+    //         if (newState[s] instanceof Array) {
+    //           oldState = []
+    //         } else {
+    //           oldState[s] = {}
+    //         }
+    //       }
     //       merge(oldState[s], newState[s])
     //     } else {
     //       oldState[s] = newState[s]
@@ -81,17 +87,9 @@ export class ToyReactComponent {
       this.componentDidUpdate && this.componentDidUpdate()
     }
   }
-
-  shouldComponentUpdate () {}
-
-  componentWillUpdate () {}
-
-  componentDidUpdate () {}
-
-  componentWillMount () {}
-
-  componentDidMount () {}
 }
+
+ToyReactComponent.$$type = 1
 
 export const ToyReactCreateElement = (type, attrs, ...children) => {
   let wrapperOrComponent
@@ -103,7 +101,14 @@ export const ToyReactCreateElement = (type, attrs, ...children) => {
   } else if (typeof type === 'function') {
     // 类组件/函数式形式
     // 相当于 new Component()
-    wrapperOrComponent = new type()
+    const isClassComponent = type.$$type === 1
+    if (isClassComponent) {
+      // 类组件
+      wrapperOrComponent = new type()
+    } else {
+      // 函数式组件
+      wrapperOrComponent = type(attrs)
+    }
   }
 
   // 属性梳理
@@ -118,6 +123,8 @@ export const ToyReactCreateElement = (type, attrs, ...children) => {
         // 数组形式子元素，递归处理
         insertChildren(ch)
       } else {
+        // 处理子元素是空的情况
+        if (ch === null || ch === void 0) ch = ''
         // 如果子元素不是可识别元素，强制转为string形式
         if (!(ch instanceof ToyReactComponent) && !(ch instanceof ElementWrapper) && !(ch instanceof TextWrapper)) {
           ch = String(ch)

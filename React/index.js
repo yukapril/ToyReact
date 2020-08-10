@@ -2,6 +2,7 @@ import { ToyReactComponent, ToyReactCreateElement, ToyReactRender } from './reac
 
 export const Component = ToyReactComponent
 export const createElement = ToyReactCreateElement
+export const render = ToyReactRender
 
 export default {
   createElement: ToyReactCreateElement,

@@ -19,7 +19,7 @@ module.exports = {
               [
                 'babel-plugin-transform-react-jsx',
                 {
-                  pragma: 'ToyReact.createElement' // default pragma is React.createElement
+                  pragma: 'React.createElement' // default pragma is React.createElement
                 }
               ]
             ]
