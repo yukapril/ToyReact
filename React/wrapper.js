@@ -1,9 +1,16 @@
+const childrenSymbol = Symbol('children')
+
 export class ElementWrapper {
   constructor (type) {
     this.type = type
     this.props = Object.create(null)
     this.children = []
+    this[childrenSymbol] = []
     this.range = null
+  }
+
+  get vDom () {
+    return this
   }
 
   setAttribute (name, val) {
@@ -12,11 +19,19 @@ export class ElementWrapper {
 
   appendChild (vChild) {
     this.children.push(vChild)
+    this[childrenSymbol].push(vChild)
   }
 
   mountTo (range) {
     this.range = range
+
+    const placeholder = document.createComment('placeholder')
+    const endRange = document.createRange()
+    endRange.setStart(range.endContainer, range.endOffset)
+    endRange.setEnd(range.endContainer, range.endOffset)
+    endRange.insertNode(placeholder)
     range.deleteContents()
+
     let el = document.createElement(this.type)
     for (let name in this.props) {
       const val = this.props[name]
@@ -63,5 +78,9 @@ export class TextWrapper {
     this.range = range
     range.deleteContents()
     range.insertNode(this.root)
+  }
+
+  get vDom () {
+    return this
   }
 }

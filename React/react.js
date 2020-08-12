@@ -1,16 +1,57 @@
 import { ElementWrapper, TextWrapper } from './wrapper'
 
+const isSameNode = (node1, node2) => {
+  // if (!node1 || !node2) return
+  if (node1.type !== node2.type) return false
+  for (const name in node1.props) {
+    if (typeof node1.props[name] === 'object'
+      && typeof node2.props[name] === 'object'
+      && JSON.stringify(node1.props[name]) === JSON.stringify(node2.props[name])
+    ) continue
+    if (node1.props[name] !== node2.props[name]) return false
+  }
+  if (Object.keys(node1.props).length !== Object.keys(node2.props).length) return false
+  return true
+}
+
+const isSameTree = (node1, node2) => {
+  if (!isSameNode(node1, node2)) return false
+  if (node1.children.length !== node2.children.length) return false
+  for (let i = 0; i < node1.children.length; i++) {
+    if (!isSameTree(node1.children[i], node2.children[i])) return false
+  }
+  return true
+}
+
+const replace = (newTree, oldTree) => {
+  if (!newTree || !oldTree) return
+  if (isSameTree(newTree, oldTree)) return
+  if (!isSameNode(newTree, oldTree)) {
+    // 根节点不同，直接放弃
+    newTree.mountTo(oldTree.range)
+  } else {
+    // 根节点相同，处理子节点
+    for (let i = 0; i < newTree.children.length; i++) {
+      replace(newTree.children[i], oldTree.children[i])
+    }
+  }
+}
+
 export class ToyReactComponent {
   constructor () {
     this.children = []
     this.props = Object.create(null)
     this.state = null
     this.oldState = null
-    this.vDom = null
+    this.oldVDom = null
   }
 
   get type () {
     return this.constructor.name
+  }
+
+  get vDom () {
+    return this.render().vDom
   }
 
   setState (state) {
@@ -74,48 +115,13 @@ export class ToyReactComponent {
       this.componentWillUpdate && (console.warn('[unsafe] componentWillUpdate'), this.componentWillUpdate())
     }
 
-    const vDom = this.render()
-    if (this.vDom) {
-      const isSameNode = (node1, node2) => {
-        if (node1.type !== node2.type) return false
-        for (const name in node1.props) {
-          if (node1.props[name] !== node2.props[name]) return false
-        }
-        if (Object.keys(node1.props).length !== Object.keys(node2.props).length) return false
-        return true
-      }
-
-      const isSameTree = (node1, node2) => {
-        if (isSameNode(node1, node2)) return false
-        if (node1.children.length !== node2.children.length) return false
-        for (let i = 0; i < node1.children.length; i++) {
-          if (!isSameTree(node1.children[i], node2.children[i])) {
-            return false
-          }
-        }
-        return true
-      }
-
-      const replace = (newTree, oldTree) => {
-        if (isSameTree(newTree, oldTree)) return
-        if (!isSameNode(newTree, oldTree)) {
-          // 根节点不同，直接放弃
-          vDom.mountTo(oldTree.range)
-        } else {
-          // 根节点相同，处理子节点
-          for (let i = 0; i < newTree.children.length; i++) {
-            replace(newTree.children[i], oldTree.children[i])
-          }
-        }
-      }
-
-      replace(vDom, this.vDom)
-
+    const vDom = this.vDom
+    if (this.oldVDom) {
+      replace(vDom, this.oldVDom)
     } else {
       vDom.mountTo(this.range)
     }
-
-    this.vDom = vDom
+    this.oldVDom = vDom
 
     // 生命周期-componentDidUpdate
     if (type !== 'mount') {
